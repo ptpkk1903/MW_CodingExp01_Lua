@@ -1,0 +1,411 @@
+function ShowElement(playerid, ui_id, elementid, x_first, y_first, alpha_value, time_out)
+    Customui:hideElement(playerid, ui_id, elementid)
+    Customui:setPosition(playerid, ui_id, elementid, x_first,y_first-150)
+    y_first_render = y_first - 150
+    alpha_new_set = alpha_value - 150
+    Customui:showElement(playerid, ui_id, elementid)
+    Customui:setAlpha(playerid, ui_id, elementid, alpha_value-150)
+    time_out_set = time_out/15
+    --Chat:sendSystemMsg(time_out_set,0)
+    repeat
+        if(time_out_set > 0) then
+            threadpool:wait(time_out_set)
+            Customui:setPosition(playerid, ui_id, elementid, x_first,y_first_render)
+            Customui:setAlpha(playerid, ui_id, elementid, alpha_new_set)
+            y_first_render = y_first_render + 10
+            alpha_new_set = alpha_value + 10
+        elseif(time_out_set == 0) then
+            Customui:setPosition(playerid, ui_id, elementid, x_first,y_first_render)
+            Customui:setAlpha(playerid, ui_id, elementid, alpha_new_set)
+            y_first_render = y_first_render + 10
+            alpha_new_set = alpha_value + 10
+        end
+    until(y_first_render > y_first)    
+end
+
+function HideElement(playerid, ui_id, elementid)
+    Customui:hideElement(playerid, ui_id, elementid)
+end
+
+function setpvar(uid,type_var,var,value)
+    local result = VarLib2:setPlayerVarByName(uid,type_var,var,value)
+    return result
+end
+
+function getpvar(uid,type_var,var)
+    local result,value = VarLib2:getPlayerVarByName(uid,type_var,var)
+    return value
+end
+
+function chatSy(objid,msg)  ----Send msg to player
+    Chat:sendSystemMsg(msg,objid)
+end
+
+function settext(uid,ui_id,elementid,msg,time_out) -- 0/1
+    if(time_out == 1) then
+        local i = 1
+        local sound_random = math.random(1,4)
+        if(sound_random == 1) then
+            Player:playMusic(uid,10187,100,1,false)
+        elseif(sound_random == 2) then
+            Player:playMusic(uid,10188,100,1,false)
+        elseif(sound_random == 3) then   
+            Player:playMusic(uid,10189,100,1,false)
+        elseif(sound_random == 4) then   
+            Player:playMusic(uid,10500,100,1,false)    
+        end    
+        repeat
+            threadpool:wait(0.0005)
+            msg_repeat = string.sub(msg, 1, i)
+            Customui:setText(uid, ui_id, elementid, msg_repeat)
+            i = i + 1
+        until(i > string.len(msg))
+        
+    elseif(time_out == 0) then
+        Customui:setText(uid, ui_id, elementid, msg)
+    end
+end    
+
+function inTable(tablef, vcheck) -- Checked Items in Table
+    Checked_table = "False"
+    Found_Status = "False"
+    for key, value in pairs(tablef) do
+        if(vcheck == value and Found_Status == "False") then
+            Checked_table = "True"
+            Found_Status = "True"
+        elseif(vcheck ~= value and Found_Status == "True") then    
+            --Empty
+        elseif(vcheck ~= value and Found_Status == "False") then
+            Checked_table = "False"
+            Found_Status = "False"
+            --Chat:sendSystemMsg("#RNot Found #B"..vcheck.." #Y"..value,Admin)
+        end    
+    end    
+    return Checked_table
+end
+
+function gpx(objid)  ---- get x postion
+    local result,x,y,z=Actor:getPosition(objid)
+    return math.floor(x)
+end    
+function gpy(objid)  ---- get y postion
+    local result,x,y,z=Actor:getPosition(objid)
+    return math.floor(y)
+end 
+function gpz(objid)  ---- get z postion
+    local result,x,y,z=Actor:getPosition(objid)
+    return math.floor(z)
+end
+-------------------------------------------------------------------------
+npc_id = "ID_NPC"
+msg_sort = "Sort_MSG"
+quest_now = "QUEST_NOW"
+i_func = "i_func"
+coin = 4153
+quest_end = {}
+
+msg_table = {}
+quest_table = {}
+quest_find_block = {}
+new_model = {}
+------------------------------------------------------------------------------------
+msg_table["4304488831"] = {"ไง เป็นผู้หลงทางงั้นเหรอ","ที่นี่คือหมู่เกาะโกลาหล มีผู้คนไม่มากอาศัยอยู่ที่นี่","คุณสามารถอาศัยที่นี่ไปก่อนก็ได้นะ","ถ้าอยากออกไปจากที่นี่ฉันอยากให้คุณช่วยคนในหมู่เกาะนี้ทำอะไรบางอย่าง","เมื่อถึงภารกิจสุดท้าย คุณจะได้รับ 'หัวใจแห่งมหาสมุทร' เมื่อถึงตอนนั้นคุณก็จะออกไปจากที่นี่ได้","ส่วนภารกิจของฉันก็คือ..............","ช่วงนี้มีมะพร้าวหล่นเต็มเกาะเลยหล่ะ","ช่วยไปเก็บมาให้หน่อยสิ มันอยู่รอบๆเกาะนี่แหละ","*ถ้าหาของไม่เจอ เมื่อเดินไปใกล้ๆของนั้นๆจะมีเอฟเฟกบอกนะ*"}
+quest_table["4304488831"] = {4304488831, 4152, 4152, 30, "เก็บมะพร้าวรอบๆเกาะ 30 ลูก","ขอบคุณสำหรับมะพร้าว ซูด~~~~~ สดชื่นมากเลยแฮะ อ่ะนี่ฉันให้นาย แล้วก็ลองไปคุยกับคนอื่นๆดูด้วยหล่ะ",coin,10} 
+
+msg_table["4309907028"] = {"ว่าไง เด็กใหม่หรอจ้ะ","อยากรู้อะไรไหมหล่ะ","ฉันจะบอกให้เอาไหมหล่ะ","แต่ก่อนอื่นฉันอยากได้ของบางอย่างหน่ะ","มันคือหอยที่แสนจะงดงาม ฮ่า~~ฮ่า~~ฮ่า~~ ขำทำไมเนี่ย","ไปหามาหน่อย ถ้าอยากจะรู้ความลับหน่ะ"}
+quest_table["4309907028"] = {4309907028, 4156, 4156, 64, "หาหอยที่งดงามที่หาดทราย 64 ชิ้น","ขอบคุณสำหรับหอยนี่นะ ความลับที่ฉันจะบอกก็ คือ~~~~~~คือ~~~~~~~คือ~~~~~~ คุณงดงามมาก      55555+",coin,5} 
+
+msg_table["4313617254"] = {"มีอะไรให้ช่วยงั้นหรอ","อยากได้ไม้กระดานไหมหล่ะ มันเอาไว้แลกเรือกับ (ลุงคัง) ได้นะ", "ถ้าอยากได้ ไปตัดขนแกะใต้บ้านฉันให้หน่อยสิ","แล้วฉันจะให้ไม้กระดาน"}
+quest_table["4313617254"] = {4313617254, 600, 600, 30, "ตัดขนแกะใต้บ้านอาเตี่ย (คลิกที่แกะเพื่อตัดขน)","ว้าวขนแกะนี่นุ่มและขาวมาก ขอบใจมากๆ  อ่ะเอาไม้กระดานไป",4165,10}
+
+msg_table["4313917352"] = {"อยากได้เรือใช่ไหมหล่ะ","ฉันทำให้ได้นะ","แต่คุณต้องไปคุยกับ (อาเตี่ย) ก่อนหน่ะ","หลังจากนั้น (อาเตี่ย) จะให้ไม้กระดานมา","เอามาให้ฉันได้","แล้วฉันจะสร้างเรือให้","*กดรับเควสหลังจากมีไม้กระดานแล้ว"}
+quest_table["4313917352"] = {4313917352, 4165, 4165, 10, "กดส่งเควสที่ ลุงคัง เมื่อมีไม้กระดาน", "เอามาได้จริงด้วยแฮะ คงเหนื่อยแย่เลย อ่ะเอาไป",13807,3}
+
+msg_table["4319628484"] = {"สวัสดีจ่ะฉันชื่อลาล่านะ","ยินดีที่ได้รู้จัก","ในบ้านของฉันมีเครื่องถักเส้นใย คุณสามารถใช้มันได้นะ","มันเอาไว้ทำคันเบ็ตตกปลากับ (ลุงแม้ว) ได้","เครื่องถักเส้นใยจะใช้มะพร้าว 2 ลูกเพื่อเอาเส้นใยและขนแกะ 3 ชิ้นนะ"}
+quest_table["4319628484"] = false
+
+msg_table["4319828977"] = {"เอ้อนายน่ะ","ช่วยไรฉันหน่อยสิ","ไปทำเส้นใยจากบ้านป้าลาล่าให้หน่อยสิ อยู่สุดทางหน่ะ","ใช้ 10 อันนะ","ถ้าทำมาได้ฉันจะให้ คันเบ็ดตกปลา","*กดรับเควสและส่งเควสหลังจากมีเส้นใยแล้ว"}
+quest_table["4319828977"] = {4319828977, 4170, 4170, 10, "กดส่งเควสที่ ลุงแม้ว เมื่อมีเส้นใย", "โอ้วเส้นใยพวกนี้ มันพันมือฉันหมดแล้วไม่นะ เห้อ~~~~~~~~~  อ่ะเอาคันเบ็ดไปตามสัญญา",4169,1}
+
+msg_table["4320729317"] = {"เรื่องราวแห่งท้องทะเลของที่นี่","คุณรู้ไหมหล่ะ","มันเป็นความลับที่ถูกปกปิดมานานแสนนาน","แต่ก่อนที่คุณจะเรียนรู้กับมัน","การมีตั๋วร้านค้า คงจำเป็นแน่ๆ","ฉันอยากได้ปลา 10 ตัว","ตกได้ด้วยเบ็ดตกปลาที่ทะเล","เบ็ดหาได้จาก (ลุงแม้ว)","*รับเควสเมื่อมีปลาสดแล้ว และส่งเควสได้เลย!!"}
+quest_table["4320729317"] = {4320729317, 12520, 12520, 10, "ตกปลาด้วย เบ็ด ที่ได้จากลุงแม้ว","โว้วขอบคุณสำหรับปลาพวกนี้นะ อ่ะนี่ 'ตั๋วร้าน' ไว้เปิดร้านค้าได้",4173,1}
+
+msg_table["4322232258"] = {"สวัสดี เด็กน้อย","เกาะแห่งนี้หน่ะมีทรัพยากรมากมายเลยใช่ไหมหล่ะ ทั้งมะพร้าว และอื่นๆ","แต่เกาะอื่นๆก็มีเรื่องราวความเป็นมาเหมือนกันนะ","โดยเฉพาะเกาะ B พวกเขามีเรื่องราวแห่งท้องทะเลให้ฟังด้วยหล่ะ","รวมไปถึง วิธีการรับ หัวใจแห่งท้องทะเล ด้วยนะ","หวังว่าคุณจะมีโอกาสไปทักทายพวกเขา","*คุณสามารถหาเรือได้จาก ลุงคัง "}
+quest_table["4322232258"] = false
+
+msg_table["4322933291"] = {"เธอคงเป็นเด็กที่พัดหลงมาสินะ","ฉันได้ข่าวจากเกาะ A มานิดหน่อย","หมู่เกาะนี้เรียกว่า หมู่เกาะโกลาหล","มันเต็มไปด้วยสิ่งที่น่าพิศวง","ที่เกาะ A จะมีทรัพยากรที่เหมาะสำหรับทำของต่างๆ","ส่วนเกาะนี้จะมีเรื่องราวความเป็นมา","อยากฟังไหมหล่ะ" ,"ถ้าไม่อยากแต่ฉันก็จะเล่าให้ฟัง","เมื่อนานมาแล้วเกาะแห่งนี้ยังจมอยู่ใต้สมุทร","แต่ไม่นาน เจ้าทะเล คราเคน!!!! ก็ปรากฏตัวขึ้น และดึงหมู่เกาะนี้ขึ้นมา","หลังจากนั้น อสูรเพลิงก็ปรากฏตัวขึ้นมาที่เกาะ C มันหลับไหลอยู่ที่นั่น","หากเจ้าสังหารมันได้แล้วละก็ มันจะมอบ 'แบบหัวใจ' ให้เจ้า","ซึ่งเจ้าสามารถนำไปให้ยายเสมียรหลอมรวมกลายเป็นหัวใจได้ "}
+quest_table["4322933291"] = false
+
+msg_table["4323534619"] = {"ไงเด็กน้อย","เจ้าอยากจะออกไปจากที่นี่ไหมหล่ะ","ไปเอาแบบหัวใจมาให้ฉัน","มันได้จากการสังหารอสูรเพลิงที่เกาะ C","ถ้าเอามาได้ฉันจะเอาหัวใจทะเลให้"}
+quest_table["4323534619"] = {4323534619, 4177, 4177, 1, "สังหารอสูรเพลิงบนเกาะ C และส่งเควส","โอ้โห เจ้าทำได้ เก่งจริงๆ อ่ะเอาไปหัวใจทะเล จำไว้ถ้ากดใช้เมื่อไหร่มันจะพาเจ้าออกไปทันที",4178,1}
+
+msg_table["4326741400"] = {"สวัสดี","อยากได้อาวุธไหมหล่ะ","ฉันตีให้ได้นะ","แต่ฉันขอ เบ็ดตกปลา ได้ไหม","เห็นว่าที่เกาะ A มีคนทำเบ็ดตกปลาที่สุดยอดมากๆ","ถ้าอยากได้อาวุธก็ไปหามาให้หน่อยสิ"}
+quest_table["4326741400"] = {4326741400, 4169, 4169, 1, "ส่งเควสเมื่อมีเบ็ดตกปลาแล้ว","โอ้~~~ทำออกมาได้ดีแฮะ อ่ะเอาดาบไป",12009,1}
+
+
+------------------------------------
+quest_find_block["4304488831"] = {2006}
+quest_find_block["4309907028"] = {2003}
+-------------------------------------
+new_model["4322933291"] = "mob_3098"
+
+----------------------------------------------------------------------------
+function Lock_NPC()
+    local n = 0
+    for k,v in pairs(msg_table) do
+        Actor:setActionAttrState(tonumber(k),64,false)
+    end
+    for key,value in pairs(new_model) do
+        Actor:changeCustomModel(tonumber(key), value)
+    end
+end
+
+function game_start()
+    Lock_NPC()
+end    
+ScriptSupportEvent:registerEvent([=[Game.Start]=], game_start)
+
+function Var_set_defalt(vs)
+    local id = vs.eventobjid
+    setpvar(id,3, npc_id,0)
+    setpvar(id,3, msg_sort,0)
+    setpvar(id,3,quest_now,0)
+    setpvar(id,3,i_func,0)
+    local info = Graphics:makeGraphicsArrowToActor(4304488831, 1, 0xff0000, 99)
+    Graphics:createGraphicsArrowByActorToActor(id, info, {x =0 ,y =1,z = 0}, 100)
+    
+end
+ScriptSupportEvent:registerEvent([=[Game.AnyPlayer.EnterGame]=], Var_set_defalt)
+
+
+
+
+function say_npc(snpc)
+    local id = snpc.eventobjid
+    local npcclick = snpc.toobjid
+    local result=Actor:isMob(npcclick)
+    local checked_npc_id = getpvar(id,3,npc_id)
+    local checked_msg_sort = getpvar(id,3,msg_sort)
+    local checked_quest_now = getpvar(id,3,quest_now)
+    chatSy(1066059221,npcclick)
+    if(result == 0 and checked_npc_id == 0 and checked_msg_sort == 0 and checked_quest_now == 0 and msg_table[tostring(npcclick)] ~= nil and inTable(quest_end, npcclick) == "False") then
+        setpvar(id,3,msg_sort,1)
+        setpvar(id,3,npc_id,npcclick)
+        Player:setActionAttrState(id,1,false)
+        Player:playMusic(id,10950,100,1,false)
+        Graphics:removeGraphicsByObjID(id, 99, 5)
+        local result,npcname=Creature:getActorName(npcclick)
+        local result,logo_npc = Customui:getMonsterObjIcon(npcclick)
+        Customui:setTexture(id, "7206499728371664341", "7206499728371664341_15", logo_npc)
+        settext(id, "7206499728371664341", "7206499728371664341_19", npcname, 0)
+        ShowElement(id, "7206499728371664341", "7206499728371664341_154", 681, 296, 100, 0.2)
+        settext(id, "7206499728371664341", "7206499728371664341_18", msg_table[tostring(npcclick)][1], 1)
+        ShowElement(id, "7206499728371664341", "7206499728371664341_21", 718, 52, 100, 0)
+    elseif(result == 0 and checked_npc_id == 0 and checked_msg_sort == 0 and checked_quest_now == npcclick and inTable(quest_end, npcclick) == "False") then
+        local result,num_back,arr=Backpack:getItemNumByBackpackBar(id,2,quest_table[tostring(checked_quest_now)][3])
+        local result,num_shot,arr=Backpack:getItemNumByBackpackBar(id,1,quest_table[tostring(checked_quest_now)][3])
+        local num_item = tonumber(num_back+num_shot)
+        if(num_item >= quest_table[tostring(checked_quest_now)][4]) then
+            HideElement(id, "7206499728371664341", "7206499728371664341_24")
+            HideElement(id, "7206499728371664341", "7206499728371664341_23")
+            HideElement(id, "7206499728371664341", "7206499728371664341_21")
+            Player:setActionAttrState(id,1,false)
+            setpvar(id,3,npc_id,npcclick)
+            local result,npcname=Creature:getActorName(npcclick)
+            local result,logo_npc = Customui:getMonsterObjIcon(npcclick)
+            Player:playMusic(id, 10955, 100, 1, false)
+            Player:removeBackpackItem(id,tonumber(quest_table[tostring(checked_quest_now)][3]),tonumber(quest_table[tostring(checked_quest_now)][4]))
+            Customui:setTexture(id, "7206499728371664341", "7206499728371664341_15", logo_npc)
+            settext(id, "7206499728371664341", "7206499728371664341_19", npcname, 0)
+            ShowElement(id, "7206499728371664341", "7206499728371664341_154", 681, 296, 100, 0)
+            settext(id, "7206499728371664341", "7206499728371664341_18", quest_table[tostring(checked_quest_now)][6], 1)
+            Backpack:addItem(id,quest_table[tostring(checked_quest_now)][7],quest_table[tostring(checked_quest_now)][8])
+            ShowElement(id, "7206499728371664341", "7206499728371664341_21", 718, 52, 100, 0)
+            Player:playMusic(id,10947,100,1,false)
+            
+        end
+    elseif(result == 0 and checked_npc_id == 0 and checked_msg_sort == 0 and checked_quest_now ~= 0 and msg_table[tostring(npcclick)] ~= nil) then   
+        chatSy(id,"#Rคุณยังทำเควสของคนอื่นไม่เสร็จ โปรดทำให้เสร็จหรือยกเลิกเควสก่อน")
+        Player:playMusic(id, 10949, 100, 1, false)
+    end
+
+
+
+
+end
+ScriptSupportEvent:registerEvent([=[Player.ClickActor]=], say_npc)
+
+
+
+function button_and_quest(nms)
+    local id = nms.eventobjid
+    local sortmsg = getpvar(id,3,msg_sort)
+    local nps_id_now = getpvar(id,3,npc_id)
+    local quest_checked = getpvar(id,3,quest_now)
+    if(nms.btnelenemt == "7206499728371664341_21" and sortmsg < table.getn(msg_table[tostring(nps_id_now)]) - 1 and quest_checked == 0) then --next msg
+        HideElement(id, "7206499728371664341", "7206499728371664341_21")
+        Player:playMusic(id,10950,100,1,false)
+        settext(id, "7206499728371664341", "7206499728371664341_18", msg_table[tostring(nps_id_now)][sortmsg + 1], 1)
+        ShowElement(id, "7206499728371664341", "7206499728371664341_21", 718, 52, 100, 0)
+        setpvar(id,3,msg_sort,sortmsg+1)
+    elseif(nms.btnelenemt == "7206499728371664341_21" and quest_checked == nps_id_now) then    
+        Player:playMusic(id,10948,100,1,false)
+        HideElement(id, "7206499728371664341", "7206499728371664341_154")
+        HideElement(id, "7206499728371664341", "7206499728371664341_21")
+        HideElement(id, "7206499728371664341", "7206499728371664341_20")
+        HideElement(id, "7206499728371664341", "7206499728371664341_42")
+        HideElement(id, "7206499728371664341", "7206499728371664341_24")
+        HideElement(id, "7206499728371664341", "7206499728371664341_23")
+        Customui:setColor(id, "7206499728371664341", "7206499728371664341_33", 999999900)
+        settext(id, "7206499728371664341", "7206499728371664341_18", " ", 0)
+        table.insert(quest_end,nps_id_now)
+        setpvar(id,3,quest_now,0)
+        setpvar(id,3,npc_id,0)
+        Player:setActionAttrState(id,1,true)
+    elseif(nms.btnelenemt == "7206499728371664341_21" and sortmsg == table.getn(msg_table[tostring(nps_id_now)]) - 1 and quest_checked == 0) then --show quest btn
+        Player:playMusic(id,10950,100,1,false)
+        HideElement(id, "7206499728371664341", "7206499728371664341_21")
+        settext(id, "7206499728371664341", "7206499728371664341_18", msg_table[tostring(nps_id_now)][sortmsg + 1], 1)
+        setpvar(id,3,msg_sort,sortmsg+1)
+        if(quest_table[tostring(nps_id_now)] ~= false) then
+            ShowElement(id, "7206499728371664341", "7206499728371664341_20", 569, 133, 100, 0)
+            threadpool:wait(0.8)
+            ShowElement(id, "7206499728371664341", "7206499728371664341_21", 718, 52, 100, 0)
+        else
+            ShowElement(id, "7206499728371664341", "7206499728371664341_21", 718, 52, 100, 0)
+        end
+    elseif(nms.btnelenemt == "7206499728371664341_21" and sortmsg > table.getn(msg_table[tostring(nps_id_now)]) - 1 and quest_checked == 0) then
+        Player:playMusic(id,10950,100,1,false)
+        HideElement(id, "7206499728371664341", "7206499728371664341_154")
+        HideElement(id, "7206499728371664341", "7206499728371664341_21")
+        HideElement(id, "7206499728371664341", "7206499728371664341_20")
+        settext(id, "7206499728371664341", "7206499728371664341_18", " ", 0)
+        setpvar(id,3,msg_sort,0)
+        setpvar(id,3,npc_id,0)
+        Player:setActionAttrState(id,1,true)
+    elseif(nms.btnelenemt == "7206499728371664341_20" and sortmsg > table.getn(msg_table[tostring(nps_id_now)]) - 1 and quest_checked == 0) then    
+        Player:playMusic(id,10948,100,1,false)
+        setpvar(id,3,quest_now,nps_id_now)
+        HideElement(id, "7206499728371664341", "7206499728371664341_154")
+        HideElement(id, "7206499728371664341", "7206499728371664341_21")
+        HideElement(id, "7206499728371664341", "7206499728371664341_20")
+        HideElement(id, "7206499728371664341", "7206499728371664341_42")
+        settext(id, "7206499728371664341", "7206499728371664341_18", " ", 0)
+        local result,logo_npc = Customui:getMonsterObjIcon(nps_id_now)
+        Customui:setTexture(id, "7206499728371664341", "7206499728371664341_27", logo_npc)
+        local result,npcname=Creature:getActorName(nps_id_now)
+        settext(id, "7206499728371664341", "7206499728371664341_30", npcname, 0)
+        local quest_setter = getpvar(id,3,quest_now)
+        settext(id, "7206499728371664341", "7206499728371664341_34", quest_table[tostring(quest_setter)][5], 0)
+        local result,iconid_quest = Customui:getItemIcon(quest_table[tostring(quest_setter)][2])
+        Customui:setTexture(id, "7206499728371664341", "7206499728371664341_32", iconid_quest)
+        settext(id, "7206499728371664341", "7206499728371664341_33", ("0".."/"..quest_table[tostring(quest_setter)][4]), 0)
+        setpvar(id,3,msg_sort,0)
+        setpvar(id,3,npc_id,0)
+        Customui:setColor(id, "7206499728371664341", "7206499728371664341_33", 999999900)
+        ShowElement(id, "7206499728371664341", "7206499728371664341_24", 61, 154, 100, 0.3)
+        Player:setActionAttrState(id,1,true)
+    elseif(nms.btnelenemt == "7206499728371664341_23") then
+        Player:playMusic(id,10955,100,1,false)
+        HideElement(id, "7206499728371664341", "7206499728371664341_23")
+        ShowElement(id, "7206499728371664341", "7206499728371664341_24", 61, 154, 100, 0.3)
+    elseif(nms.btnelenemt == "7206499728371664341_35") then    
+        Player:playMusic(id,10950,100,1,false)
+        HideElement(id, "7206499728371664341", "7206499728371664341_24")
+        ShowElement(id, "7206499728371664341", "7206499728371664341_23", 43, 165, 100, 0)
+    elseif(nms.btnelenemt == "7206499728371664341_40") then    
+        Player:playMusic(id,10954,100,1,false)
+        setpvar(id,3,msg_sort,0)
+        setpvar(id,3,npc_id,0)
+        setpvar(id,3,quest_now,0)
+        HideElement(id, "7206499728371664341", "7206499728371664341_24")
+        HideElement(id, "7206499728371664341", "7206499728371664341_23")
+    end
+
+end
+ScriptSupportEvent:registerEvent([=[UI.Button.Click]=], button_and_quest)
+
+
+function items_quest_drop(iqd)
+    local id = iqd.eventobjid
+    local quest_setter = getpvar(id,3,quest_now)
+    if(quest_setter ~= 0 and iqd.btnelenemt == "7206499728371664341_44"  or iqd.btnelenemt == "7206499728371664341_20") then
+        local result,num_back,arr=Backpack:getItemNumByBackpackBar(id,2,quest_table[tostring(quest_setter)][3])
+        local result,num_shot,arr=Backpack:getItemNumByBackpackBar(id,1,quest_table[tostring(quest_setter)][3])
+        HideElement(id, "7206499728371664341", "7206499728371664341_44")
+        local num_item = tonumber(num_back+num_shot)
+        if(num_item < quest_table[tostring(quest_setter)][4]) then
+            HideElement(id, "7206499728371664341", "7206499728371664341_42")
+            Customui:setColor(id, "7206499728371664341", "7206499728371664341_33", 999999900)
+            settext(id, "7206499728371664341", "7206499728371664341_33", num_item.."/"..quest_table[tostring(quest_setter)][4], 0)
+            num_item = 0
+            
+        elseif(num_item >= quest_table[tostring(quest_setter)][4]) then
+            if(num_item == quest_table[tostring(quest_setter)][4]) then 
+                Customui:setColor(id, "7206499728371664341", "7206499728371664341_33", 99999990)
+                settext(id, "7206499728371664341", "7206499728371664341_33", num_item.."/"..quest_table[tostring(quest_setter)][4], 0)
+                num_item = 0
+                Player:playMusic(id,10952,100,1,false)
+                ShowElement(id, "7206499728371664341", "7206499728371664341_42", 176, -3, 100, 0.3)
+            elseif(num_item > quest_table[tostring(quest_setter)][4]) then
+                Customui:setColor(id, "7206499728371664341", "7206499728371664341_33", 99999990)
+                settext(id, "7206499728371664341", "7206499728371664341_33", num_item.."/"..quest_table[tostring(quest_setter)][4], 0)
+                num_item = 0
+                Player:playMusic(id,10952,100,1,false)
+                ShowElement(id, "7206499728371664341", "7206499728371664341_42", 176, -3, 100, 0)
+            end  
+        end 
+        threadpool:wait(10)
+        ShowElement(id, "7206499728371664341", "7206499728371664341_44", 146, 142, 100, 0)    
+    elseif(quest_setter ~= 0 and iqd.btnelenemt == nil and iqd.itemid == quest_table[tostring(quest_setter)][3] or iqd.itemid == 0) then    
+        local result,num_back,arr=Backpack:getItemNumByBackpackBar(id,2,quest_table[tostring(quest_setter)][3])
+        local result,num_shot,arr=Backpack:getItemNumByBackpackBar(id,1,quest_table[tostring(quest_setter)][3])
+        local num_item = tonumber(num_back+num_shot)
+        if(num_item < quest_table[tostring(quest_setter)][4]) then
+            HideElement(id, "7206499728371664341", "7206499728371664341_42")
+            Customui:setColor(id, "7206499728371664341", "7206499728371664341_33", 999999900)
+            settext(id, "7206499728371664341", "7206499728371664341_33", num_item.."/"..quest_table[tostring(quest_setter)][4], 0)
+            num_item = 0
+        elseif(num_item >= quest_table[tostring(quest_setter)][4]) then
+            if(num_item == quest_table[tostring(quest_setter)][4]) then 
+                Customui:setColor(id, "7206499728371664341", "7206499728371664341_33", 99999990)
+                settext(id, "7206499728371664341", "7206499728371664341_33", num_item.."/"..quest_table[tostring(quest_setter)][4], 0)
+                num_item = 0
+                Player:playMusic(id,10952,100,1,false)
+                ShowElement(id, "7206499728371664341", "7206499728371664341_42", 176, -3, 100, 0.3)
+            elseif(num_item > quest_table[tostring(quest_setter)][4]) then
+                Customui:setColor(id, "7206499728371664341", "7206499728371664341_33", 99999990)
+                settext(id, "7206499728371664341", "7206499728371664341_33", num_item.."/"..quest_table[tostring(quest_setter)][4], 0)
+                num_item = 0
+                ShowElement(id, "7206499728371664341", "7206499728371664341_42", 176, -3, 100, 0)
+            end
+        end
+    end
+end
+ScriptSupportEvent:registerEvent([=[Player.ShortcutChange]=], items_quest_drop)
+ScriptSupportEvent:registerEvent([=[Player.BackPackChange]=], items_quest_drop)
+ScriptSupportEvent:registerEvent([=[UI.Button.Click]=], items_quest_drop)
+
+
+
+
+Stop_find = {0}
+
+function find_block_event(fbe)
+    local id = fbe.eventobjid
+    local quest_now = getpvar(id,3,quest_now)
+    if(quest_now ~= 0 and quest_find_block[tostring(quest_now)][1] ~= nil) then
+        local result,x,y,z = Actor:findNearestBlock(id, quest_find_block[tostring(quest_now)][1], 12)
+        if(Stop_find[1] == 0 and result ~= 1001) then
+            Stop_find[1] = 1
+            World:playParticalEffect(((x)*100),((y)*100),((z)*100),1474,1)
+            World:playParticalEffect(((x)*100),((y)*100)-1,((z)*100),1555,2)
+            World:playSoundEffectOnPos({x=((x)*100),y=((y)*100),z=((z)*100)},10794,70,1,false)
+            threadpool:wait(2)
+            World:stopEffectOnPosition(((x)*100),((y)*100)-1,((z)*100),1555)
+            Stop_find[1] = 0
+        end
+        
+    end
+end
+ScriptSupportEvent:registerEvent([=[Player.MoveOneBlockSize]=], find_block_event)
